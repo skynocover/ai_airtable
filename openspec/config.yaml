@@ -1,0 +1,33 @@
+schema: spec-driven
+
+context: |
+  產品:AI 資料工作台(AI-native data workbench),對話建表 + 截圖抽取 + 公開表單,
+  目標用戶為亞洲接案者/小工作室。完整規格唯一真相在 repo 根目錄 PLAN.md(讀 §5 Phase 1)。
+  建構順序與跨切片鐵則見 CLAUDE.md。
+
+  技術棧:Cloudflare Workers(單一 worker:/api、/f SSR、/auth)+ Hono;D1(SQLite,唯一真相);
+  R2(截圖);KV(slug 反查/cache);AI Gateway → Claude Sonnet(含 vision);
+  React + Vite SPA + Tailwind + shadcn/ui;Better Auth(email + Google);Turnstile;TypeScript;
+  繁體中文(無 i18n 框架,集中字串常數檔);shared/ 放共用型別 + zod(先別拆 monorepo)。
+  Phase 1 不用:Durable Objects、Queues、Workflows、Vectorize、Workers AI、多 LLM provider、Stripe。
+
+  跨切片鐵則(每個 change 都必須遵守):
+  1. 多租戶隔離硬規則:單一共用 D1,所有表有 workspace_id,所有存取過 scopedDb(workspace_id) wrapper,
+     讓「不帶 workspace_id 查」在型別上不可能。漏一個 WHERE workspace_id = 跨租戶外洩。
+  2. AI 寫入必先 preview、確認才 commit:propose_schema_operations 只提案不寫 DB,
+     用戶接受/拒絕 → POST /collections/:id/operations(帶 schema_version 樂觀鎖)。create_collection 例外直接建。
+  3. AI 互動一律 tool calling / structured output,不 parse 自由文字;LLM 呼叫走 AI Gateway。
+  4. D1 唯一真相:current_schema_json 是 schema 真相,schema_operations 只是 audit log,讀取時不 reduce 重算。
+  5. 儲存格式 = AI 輸出 = 顯示值,零轉換;7 種 field types,金額 = number + currency 顯示設定(無獨立型別)。
+  6. Phase 1 只有免費版,配額是成本/濫用煞車(非付費方案),AI token + 截圖設硬上限達標即擋。
+  7. 刪除一律軟刪除(deleted_at)。
+  8. Phase 1 範圍外功能不做(見 PLAN.md §5.1 ❌ 清單)。
+
+rules:
+  proposal:
+    - 繁體中文敘述 + 英文技術識別字,對齊 PLAN.md 風格
+    - 一定要有 Non-goals 區段,明列本 change 不做、留給哪個後續 change
+    - Phase 1 範圍鎖死,不把後續 Phase 功能寫進來
+  tasks:
+    - 每個 task 是可獨立驗收的具體動作,粒度約 0.5-2 小時
+    - 必含:多租戶 scopedDb 驗證、相關鐵則的測試
