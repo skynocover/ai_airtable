@@ -18,14 +18,14 @@
 
 | # | change | 依賴 | 狀態 |
 |---|---|---|---|
-| 1 | `foundation-auth-workspace` | — | ✅ 實作完成(待 archive) |
+| 1 | `foundation-auth-workspace` | — | ✅ 已 archive(2026-05-26) |
 | 2 | `collections-records-admin` | 1 | 📋 規格已生成 |
 | 3 | `ai-chat-tools` | 2 | 📋 規格已生成 |
 | 4 | `screenshot-extraction` | 2 | 📋 規格已生成 |
 | 5 | `public-form-input` | 2 | 📋 規格已生成 |
 | 6 | `quota-limits` | 2,4,5 | 📋 規格已生成 |
 
-**👉 下一個要做的:先 archive #1(`opsx:archive foundation-auth-workspace`),再做 #2 `collections-records-admin` 的實作。實作指令:開新 session 說「實作 openspec 的 collections-records-admin change」。**
+**👉 下一個要做的:#2 `collections-records-admin` 的實作。實作指令:開新 session 說「實作 openspec 的 collections-records-admin change」。**
 
 > 每完成一個 change,把它的狀態改成 ✅,並更新上面這行「下一個」。
 > ⚠️ **動工前先過 Week 0 spike**(截圖命中率 + 單張成本 C、Better Auth on Workers+D1、Claude 不訓練確認、Email 送達率)。spike 不是 openspec change,在 openspec 外面先做。見 `PLAN.md` §12.1。
