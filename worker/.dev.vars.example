@@ -1,0 +1,9 @@
+# 複製成 worker/.dev.vars 供 `wrangler dev` 使用(勿 commit 真值)。
+BETTER_AUTH_SECRET="dev-secret-change-me-min-32-chars-long-string"
+GOOGLE_CLIENT_ID=""
+GOOGLE_CLIENT_SECRET=""
+# 選填:設定後 reset 信會嘗試透過 Resend 寄出;留空則僅在 log 印出 reset 連結。
+# 注意:設定後若寄送失敗會「拋錯」(不再假成功);正式環境請搭配 EMAIL_FROM 設定已驗證網域寄件人。
+RESEND_API_KEY=""
+# 選填:Resend 寄件人地址(已驗證網域)。留空時退回 Resend 測試寄件人(僅能寄給帳號擁有者)。
+EMAIL_FROM=""

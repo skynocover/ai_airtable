@@ -1,0 +1,27 @@
+{
+  "name": "@ai-airtable/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-sqlite --import tsx --test test/*.test.ts",
+    "db:apply:local": "wrangler d1 migrations apply ai-airtable --local",
+    "db:apply:remote": "wrangler d1 migrations apply ai-airtable --remote"
+  },
+  "dependencies": {
+    "@ai-airtable/shared": "workspace:*",
+    "better-auth": "^1.2.7",
+    "hono": "^4.7.7",
+    "kysely": "^0.27.4",
+    "kysely-d1": "^0.3.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250507.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.5.4",
+    "wrangler": "^4.14.0"
+  }
+}

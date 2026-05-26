@@ -1,0 +1,29 @@
+name = "ai-airtable"
+main = "src/index.ts"
+compatibility_date = "2025-04-01"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 —— 唯一真相。本地以 .wrangler/state 下的 SQLite 模擬。
+# 部署到 remote 前須先 `wrangler d1 create ai-airtable` 並把回傳的 database_id 填入此處。
+[[d1_databases]]
+binding = "DB"
+database_name = "ai-airtable"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "../migrations"
+
+# 靜態資源 = web/ 的 Vite 建置產物。SPA fallback 讓 client 路由(/login 等)回 index.html。
+[assets]
+directory = "../web/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+[vars]
+# 開發預設;部署時以實際網域覆蓋。Secrets(BETTER_AUTH_SECRET / GOOGLE_*)走 `wrangler secret`。
+#
+# BETTER_AUTH_URL = 使用者實際造訪的來源(origin)。開發時前端跑在 Vite :5173 並 proxy /api 到
+# 本 Worker(:8787),所以這裡用 :5173 —— 這同時讓:
+#   1. 重設密碼信裡的連結指向 :5173(SPA 所在處),而非 :8787 的舊建置產物;
+#   2. Better Auth 的 origin 檢查通過(瀏覽器 origin == baseURL)。
+# 若你直接打 :8787 測試,:8787 已列在 TRUSTED_ORIGINS。部署時改為正式網域(同源,單一值即可)。
+BETTER_AUTH_URL = "http://localhost:5173"
+TRUSTED_ORIGINS = "http://localhost:8787"

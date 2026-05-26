@@ -1,0 +1,27 @@
+{
+  "name": "ai-airtable",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI 資料工作台 — Phase 1",
+  "packageManager": "pnpm@10.32.1",
+  "scripts": {
+    "typecheck": "pnpm -r run typecheck",
+    "build": "pnpm --filter @ai-airtable/web run build",
+    "dev:web": "pnpm --filter @ai-airtable/web run dev",
+    "dev:worker": "pnpm --filter @ai-airtable/worker run dev",
+    "test": "pnpm --filter @ai-airtable/worker run test",
+    "db:apply:local": "pnpm --filter @ai-airtable/worker run db:apply:local",
+    "lint": "prettier --check \"{shared,worker,web}/**/*.{ts,tsx,css}\"",
+    "format": "prettier --write \"{shared,worker,web}/**/*.{ts,tsx,css}\""
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3",
+    "typescript": "^5.5.4"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "workerd", "@cloudflare/workerd-linux-64", "sharp"]
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
