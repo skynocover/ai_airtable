@@ -3,6 +3,8 @@ import { API_ERROR_CODES } from "@ai-airtable/shared";
 import type { AppBindings } from "./types";
 import { authRoutes } from "./routes/auth";
 import { workspaceRoutes } from "./routes/workspaces";
+import { collectionRoutes } from "./routes/collections";
+import { recordRoutes } from "./routes/records";
 import { requireAuth } from "./middleware/context";
 
 const app = new Hono<AppBindings>();
@@ -22,6 +24,14 @@ const v1 = new Hono<AppBindings>();
 v1.use("/workspace", requireAuth);
 v1.use("/workspace/*", requireAuth);
 v1.route("/workspace", workspaceRoutes);
+
+v1.use("/collections", requireAuth);
+v1.use("/collections/*", requireAuth);
+v1.route("/collections", collectionRoutes);
+
+v1.use("/records/*", requireAuth);
+v1.route("/records", recordRoutes);
+
 app.route("/api/v1", v1);
 
 // ── 未匹配的 API 路徑:回 JSON 404,而非 SPA 內容 ──────

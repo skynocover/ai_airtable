@@ -65,6 +65,37 @@ export const STRINGS = {
     loadFailed: "載入工作區失敗,請重新整理頁面",
   },
 
+  collections: {
+    title: "我的 Collections",
+    newButton: "新增 Collection",
+    emptyTitle: "開始建立你的第一個 Collection",
+    emptyHint: "Collection 是一張資料表。先建立一個,就能開始整理你的資料。",
+    namePlaceholder: "例如:客戶名單、報名資料",
+    create: "建立",
+    cancel: "取消",
+    loadFailed: "載入 Collection 失敗,請重新整理頁面",
+    nameEmpty: "名稱不能空白",
+    back: "返回",
+  },
+
+  records: {
+    addButton: "新增資料",
+    exportButton: "匯出 CSV",
+    empty: "尚無資料,點「新增資料」開始建立。",
+    save: "儲存",
+    cancel: "取消",
+    deleteConfirm: "確定要刪除這筆資料嗎?",
+    source: "來源",
+    sourceManual: "手動",
+    sourceScreenshot: "截圖",
+    sourceForm: "表單",
+    total: "共 {n} 筆",
+    loadFailed: "載入資料失敗,請重新整理頁面",
+    conflictReload: "表格結構已被更新,已為你重新載入最新內容。",
+    noFields: "這個 Collection 還沒有欄位。",
+    selectPlaceholder: "請選擇",
+  },
+
   errors: {
     networkBusy: "網路忙線中,請稍後再試",
     aiFailed: "AI 處理失敗,請試試清楚一點的圖片",
