@@ -15,5 +15,6 @@ export const API_ERROR_CODES = {
   FORBIDDEN: "forbidden",
   NOT_FOUND: "not_found",
   VALIDATION: "validation_error",
+  CONFLICT: "conflict",
   INTERNAL: "internal_error",
 } as const;

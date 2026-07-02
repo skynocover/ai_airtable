@@ -4,6 +4,7 @@ import SignUp from "@/pages/SignUp";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import Home from "@/pages/Home";
+import CollectionView from "@/pages/CollectionView";
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/home" element={<Home />} />
+        <Route path="/c/:slug" element={<CollectionView />} />
         <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
     </BrowserRouter>

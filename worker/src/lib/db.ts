@@ -43,6 +43,12 @@ export interface SelectOptions {
   where?: string;
   params?: Bindable[];
   orderBy?: string;
+  /**
+   * 依 `data_json` 內某欄位排序(records 專用)。因 number 存 JSON number,
+   * `json_extract` 的數值比較正確(非字典序)。`fieldId` 經白名單驗證,
+   * path(`$.<fieldId>`)走 bind 不內插。與 `orderBy` 並存時,此項為主排序。
+   */
+  orderByJsonField?: { fieldId: string; direction: "asc" | "desc" };
   limit?: number;
   offset?: number;
 }
@@ -59,8 +65,28 @@ export interface ScopedDb {
     table: WorkspaceScopedTable,
     options?: SelectOptions,
   ): Promise<T | null>;
+  /** 計數(同樣自動帶 workspace_id);供列表回傳 total 用。 */
+  count(table: WorkspaceScopedTable, options?: SelectOptions): Promise<number>;
   /** 寫入;自動補 workspace_id 欄位,呼叫端不需(也不該)自己帶。 */
   insert(table: WorkspaceScopedTable, data: Record<string, Bindable>): Promise<void>;
+  /**
+   * 更新;自動 AND 上 `workspace_id`。回傳受影響列數(供樂觀鎖判斷:0 = 版本衝突/不存在)。
+   * `options.where` / `params` 用法同 select(值一律走 params bind)。
+   */
+  update(
+    table: WorkspaceScopedTable,
+    data: Record<string, Bindable>,
+    options?: SelectOptions,
+  ): Promise<number>;
+}
+
+/** 驗證 data_json 欄位 id(防 json path 注入);只允許 `fld_` 前綴的安全字元。 */
+const SAFE_FIELD_ID = /^fld_[a-z0-9_]+$/i;
+function assertSafeFieldId(fieldId: string): string {
+  if (!SAFE_FIELD_ID.test(fieldId)) {
+    throw new Error(`不安全的 field id:${fieldId}`);
+  }
+  return fieldId;
 }
 
 /**
@@ -134,7 +160,15 @@ export function scopedDb(db: D1Database, workspaceId: string): ScopedDb {
     ) {
       const { clause, params } = buildWhere(workspaceId, options);
       let sql = `SELECT * FROM ${table} WHERE ${clause}`;
-      if (options?.orderBy) sql += ` ORDER BY ${assertSafeOrderBy(options.orderBy)}`;
+      // 主排序:json_extract(data_json, '$.fld_x')(若指定),其 path 走 bind;次排序為 orderBy。
+      const orderParts: string[] = [];
+      if (options?.orderByJsonField) {
+        const dir = options.orderByJsonField.direction === "desc" ? "DESC" : "ASC";
+        orderParts.push(`json_extract(data_json, ?) ${dir}`);
+        params.push(`$.${assertSafeFieldId(options.orderByJsonField.fieldId)}`);
+      }
+      if (options?.orderBy) orderParts.push(assertSafeOrderBy(options.orderBy));
+      if (orderParts.length) sql += ` ORDER BY ${orderParts.join(", ")}`;
       // LIMIT/OFFSET 一律走 bind 參數,絕不字串內插 —— 杜絕注入與 `LIMIT NaN` 語法錯。
       if (options?.limit != null) {
         sql += ` LIMIT ?`;
@@ -170,6 +204,16 @@ export function scopedDb(db: D1Database, workspaceId: string): ScopedDb {
       );
     },
 
+    async count(table: WorkspaceScopedTable, options?: SelectOptions) {
+      const { clause, params } = buildWhere(workspaceId, options);
+      const sql = `SELECT COUNT(*) AS n FROM ${table} WHERE ${clause}`;
+      const row = await db
+        .prepare(sql)
+        .bind(...params)
+        .first<{ n: number }>();
+      return row?.n ?? 0;
+    },
+
     async insert(table: WorkspaceScopedTable, data: Record<string, Bindable>) {
       const row: Record<string, Bindable> = { ...data, workspace_id: workspaceId };
       const cols = Object.keys(row);
@@ -179,6 +223,23 @@ export function scopedDb(db: D1Database, workspaceId: string): ScopedDb {
         .prepare(sql)
         .bind(...cols.map((c) => row[c]))
         .run();
+    },
+
+    async update(
+      table: WorkspaceScopedTable,
+      data: Record<string, Bindable>,
+      options?: SelectOptions,
+    ) {
+      const setCols = Object.keys(data);
+      if (setCols.length === 0) throw new Error("update 沒有要更新的欄位");
+      const setClause = setCols.map((c) => `${c} = ?`).join(", ");
+      const { clause, params: whereParams } = buildWhere(workspaceId, options);
+      const sql = `UPDATE ${table} SET ${setClause} WHERE ${clause}`;
+      const res = await db
+        .prepare(sql)
+        .bind(...setCols.map((c) => data[c]), ...whereParams)
+        .run();
+      return res.meta?.changes ?? 0;
     },
   };
 }
