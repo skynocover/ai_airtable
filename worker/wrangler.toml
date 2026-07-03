@@ -27,3 +27,8 @@ not_found_handling = "single-page-application"
 # 若你直接打 :8787 測試,:8787 已列在 TRUSTED_ORIGINS。部署時改為正式網域(同源,單一值即可)。
 BETTER_AUTH_URL = "http://localhost:5173"
 TRUSTED_ORIGINS = "http://localhost:8787"
+
+# AI Gateway 位置(非機密)。部署前填入實際 Cloudflare account id 與 gateway 名稱。
+# ANTHROPIC_API_KEY 走 `wrangler secret put ANTHROPIC_API_KEY`(勿放這裡)。
+AI_GATEWAY_ACCOUNT_ID = ""
+AI_GATEWAY_NAME = ""

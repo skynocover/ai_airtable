@@ -5,6 +5,7 @@ import { authRoutes } from "./routes/auth";
 import { workspaceRoutes } from "./routes/workspaces";
 import { collectionRoutes } from "./routes/collections";
 import { recordRoutes } from "./routes/records";
+import { chatRoutes } from "./routes/chat";
 import { requireAuth } from "./middleware/context";
 
 const app = new Hono<AppBindings>();
@@ -31,6 +32,10 @@ v1.route("/collections", collectionRoutes);
 
 v1.use("/records/*", requireAuth);
 v1.route("/records", recordRoutes);
+
+v1.use("/chat", requireAuth);
+v1.use("/chat/*", requireAuth);
+v1.route("/chat", chatRoutes);
 
 app.route("/api/v1", v1);
 

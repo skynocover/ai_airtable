@@ -185,4 +185,12 @@ test("isUniqueViolation 精準分辨欄位(子字串不誤判)", () => {
   assert.equal(isUniqueViolation(slugErr, "slug"), true);
   assert.equal(isUniqueViolation(multiErr, "slug"), true, "多欄位訊息中含 slug 應為 true");
   assert.equal(isUniqueViolation(new Error("some other error"), "slug"), false);
+
+  // 真實 D1(workerd)訊息在最後一欄後接 `: SQLITE_CONSTRAINT ...`,冒號必須算邊界,
+  // 否則 slug 撞號偵測不到 → createCollection 重試失效 → 500(繁中名皆 slugify 成同一 base 必踩)。
+  const d1Composite = new Error(
+    "D1_ERROR: UNIQUE constraint failed: collections.workspace_id, collections.slug: SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_UNIQUE)",
+  );
+  assert.equal(isUniqueViolation(d1Composite, "slug"), true, "D1 冒號後綴的 slug 應被偵測");
+  assert.equal(isUniqueViolation(d1Composite, "id"), false, "D1 訊息中 id 子字串不應誤判");
 });

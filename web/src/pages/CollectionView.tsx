@@ -6,6 +6,8 @@ import { api, ApiError } from "@/lib/api";
 import { formatFieldValue, htmlInputType, inputKindForField } from "@/lib/fields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import ChatPanel from "@/components/ChatPanel";
+import FieldManager from "@/components/FieldManager";
 
 const R = STRINGS.records;
 const C = STRINGS.collections;
@@ -35,6 +37,7 @@ export default function CollectionView() {
   const [adding, setAdding] = useState(false);
   const [newRow, setNewRow] = useState<Record<string, string>>({});
   const [rowError, setRowError] = useState("");
+  const [managingFields, setManagingFields] = useState(false);
 
   const fields: Field[] = useMemo(() => collection?.schema.fields ?? [], [collection]);
 
@@ -76,6 +79,19 @@ export default function CollectionView() {
     if (collection) refetchRecords(collection, sort);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collection, sort]);
+
+  // 套用 schema 變更(AI 提案接受 / 手動管理欄位)後:refetch collection(schema 變了)
+  // → effect 連帶重載 records。回傳 promise 供 FieldManager await。
+  function reloadCollection(): Promise<void> {
+    if (!collection) return Promise.resolve();
+    return api
+      .getCollection(collection.id)
+      .then(setCollection)
+      .catch((err: unknown) => {
+        if (err instanceof ApiError && err.status === 401) return;
+        setLoadError(C.loadFailed);
+      });
+  }
 
   if (!isPending && !session) return <Navigate to="/login" replace />;
 
@@ -186,158 +202,176 @@ export default function CollectionView() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link to="/home" className="text-sm text-muted-foreground hover:underline">
-            ← {C.back}
-          </Link>
-          <h1 className="text-xl font-semibold">
-            {collection ? `${collection.icon || "📋"} ${collection.name}` : "…"}
-          </h1>
+    <>
+      <div className="mx-auto max-w-6xl px-4 py-8">
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link to="/home" className="text-sm text-muted-foreground hover:underline">
+              ← {C.back}
+            </Link>
+            <h1 className="text-xl font-semibold">
+              {collection ? `${collection.icon || "📋"} ${collection.name}` : "…"}
+            </h1>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setManagingFields(true)}
+              disabled={!collection}
+            >
+              {STRINGS.schemaAdmin.manageButton}
+            </Button>
+            <Button variant="outline" onClick={onExport} disabled={!collection}>
+              {R.exportButton}
+            </Button>
+            <Button
+              onClick={() => setAdding((v) => !v)}
+              disabled={!collection || fields.length === 0}
+            >
+              {R.addButton}
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={onExport} disabled={!collection}>
-            {R.exportButton}
-          </Button>
-          <Button
-            onClick={() => setAdding((v) => !v)}
-            disabled={!collection || fields.length === 0}
-          >
-            {R.addButton}
-          </Button>
-        </div>
-      </div>
 
-      {loadError ? <p className="text-sm text-destructive">{loadError}</p> : null}
+        {loadError ? <p className="text-sm text-destructive">{loadError}</p> : null}
 
-      {collection && fields.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{R.noFields}</p>
-      ) : null}
+        {collection && fields.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{R.noFields}</p>
+        ) : null}
 
-      {collection && fields.length > 0 ? (
-        <>
-          <p className="mb-2 text-sm text-muted-foreground">
-            {R.total.replace("{n}", String(total))}
-          </p>
-          <div className="overflow-x-auto rounded-lg border">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50">
-                <tr>
-                  {fields.map((f) => (
-                    <th
-                      key={f.id}
-                      className="cursor-pointer whitespace-nowrap px-3 py-2 text-left font-medium hover:bg-muted"
-                      onClick={() => toggleSort(f.id)}
-                    >
-                      {f.name}
-                      {sort?.field === f.id ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
-                    </th>
-                  ))}
-                  <th className="px-3 py-2 text-left font-medium">{R.source}</th>
-                  <th className="px-3 py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {records.length === 0 ? (
+        {collection && fields.length > 0 ? (
+          <>
+            <p className="mb-2 text-sm text-muted-foreground">
+              {R.total.replace("{n}", String(total))}
+            </p>
+            <div className="overflow-x-auto rounded-lg border">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50">
                   <tr>
-                    <td
-                      colSpan={fields.length + 2}
-                      className="px-3 py-8 text-center text-muted-foreground"
-                    >
-                      {R.empty}
-                    </td>
+                    {fields.map((f) => (
+                      <th
+                        key={f.id}
+                        className="cursor-pointer whitespace-nowrap px-3 py-2 text-left font-medium hover:bg-muted"
+                        onClick={() => toggleSort(f.id)}
+                      >
+                        {f.name}
+                        {sort?.field === f.id ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
+                      </th>
+                    ))}
+                    <th className="px-3 py-2 text-left font-medium">{R.source}</th>
+                    <th className="px-3 py-2" />
                   </tr>
-                ) : (
-                  records.map((rec) => (
-                    <tr key={rec.id} className="border-t">
-                      {fields.map((f) => {
-                        const isEditing = editing?.recordId === rec.id && editing.fieldId === f.id;
-                        return (
-                          <td
-                            key={f.id}
-                            className="px-3 py-2 align-top"
-                            onClick={() => {
-                              if (!isEditing) startEdit(rec, f);
-                            }}
-                          >
-                            {isEditing ? (
-                              renderEditor(f)
-                            ) : (
-                              <span className="block min-h-[1.25rem] cursor-text">
-                                {formatFieldValue(f, rec.data[f.id])}
-                              </span>
-                            )}
-                          </td>
-                        );
-                      })}
-                      <td className="px-3 py-2">
-                        <span className="rounded bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
-                          {SOURCE_LABELS[rec.source] ?? rec.source}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        <Button variant="ghost" size="sm" onClick={() => onDelete(rec.id)}>
-                          🗑
-                        </Button>
+                </thead>
+                <tbody>
+                  {records.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={fields.length + 2}
+                        className="px-3 py-8 text-center text-muted-foreground"
+                      >
+                        {R.empty}
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ) : (
+                    records.map((rec) => (
+                      <tr key={rec.id} className="border-t">
+                        {fields.map((f) => {
+                          const isEditing =
+                            editing?.recordId === rec.id && editing.fieldId === f.id;
+                          return (
+                            <td
+                              key={f.id}
+                              className="px-3 py-2 align-top"
+                              onClick={() => {
+                                if (!isEditing) startEdit(rec, f);
+                              }}
+                            >
+                              {isEditing ? (
+                                renderEditor(f)
+                              ) : (
+                                <span className="block min-h-[1.25rem] cursor-text">
+                                  {formatFieldValue(f, rec.data[f.id])}
+                                </span>
+                              )}
+                            </td>
+                          );
+                        })}
+                        <td className="px-3 py-2">
+                          <span className="rounded bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
+                            {SOURCE_LABELS[rec.source] ?? rec.source}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <Button variant="ghost" size="sm" onClick={() => onDelete(rec.id)}>
+                            🗑
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
 
-          {adding ? (
-            <form onSubmit={onAddRow} className="mt-4 rounded-lg border p-4">
-              <div className="grid gap-3 sm:grid-cols-2">
-                {fields.map((f) => {
-                  const kind = inputKindForField(f);
-                  return (
-                    <label key={f.id} className="space-y-1 text-sm">
-                      <span className="text-muted-foreground">
-                        {f.name}
-                        {f.required ? " *" : ""}
-                      </span>
-                      {kind === "select" ? (
-                        <select
-                          className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm"
-                          value={newRow[f.id] ?? ""}
-                          onChange={(e) =>
-                            setNewRow((prev) => ({ ...prev, [f.id]: e.target.value }))
-                          }
-                        >
-                          <option value="">{R.selectPlaceholder}</option>
-                          {(f.options ?? []).map((o) => (
-                            <option key={o} value={o}>
-                              {o}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <Input
-                          type={htmlInputType(kind)}
-                          value={newRow[f.id] ?? ""}
-                          onChange={(e) =>
-                            setNewRow((prev) => ({ ...prev, [f.id]: e.target.value }))
-                          }
-                        />
-                      )}
-                    </label>
-                  );
-                })}
-              </div>
-              {rowError ? <p className="mt-2 text-sm text-destructive">{rowError}</p> : null}
-              <div className="mt-3 flex gap-2">
-                <Button type="submit">{R.save}</Button>
-                <Button type="button" variant="ghost" onClick={() => setAdding(false)}>
-                  {R.cancel}
-                </Button>
-              </div>
-            </form>
-          ) : null}
-        </>
+            {adding ? (
+              <form onSubmit={onAddRow} className="mt-4 rounded-lg border p-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {fields.map((f) => {
+                    const kind = inputKindForField(f);
+                    return (
+                      <label key={f.id} className="space-y-1 text-sm">
+                        <span className="text-muted-foreground">
+                          {f.name}
+                          {f.required ? " *" : ""}
+                        </span>
+                        {kind === "select" ? (
+                          <select
+                            className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm"
+                            value={newRow[f.id] ?? ""}
+                            onChange={(e) =>
+                              setNewRow((prev) => ({ ...prev, [f.id]: e.target.value }))
+                            }
+                          >
+                            <option value="">{R.selectPlaceholder}</option>
+                            {(f.options ?? []).map((o) => (
+                              <option key={o} value={o}>
+                                {o}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <Input
+                            type={htmlInputType(kind)}
+                            value={newRow[f.id] ?? ""}
+                            onChange={(e) =>
+                              setNewRow((prev) => ({ ...prev, [f.id]: e.target.value }))
+                            }
+                          />
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
+                {rowError ? <p className="mt-2 text-sm text-destructive">{rowError}</p> : null}
+                <div className="mt-3 flex gap-2">
+                  <Button type="submit">{R.save}</Button>
+                  <Button type="button" variant="ghost" onClick={() => setAdding(false)}>
+                    {R.cancel}
+                  </Button>
+                </div>
+              </form>
+            ) : null}
+          </>
+        ) : null}
+      </div>
+      {managingFields && collection ? (
+        <FieldManager
+          collection={collection}
+          onChanged={reloadCollection}
+          onClose={() => setManagingFields(false)}
+        />
       ) : null}
-    </div>
+      <ChatPanel context={collection} onSchemaApplied={reloadCollection} />
+    </>
   );
 }

@@ -7,3 +7,11 @@ GOOGLE_CLIENT_SECRET=""
 RESEND_API_KEY=""
 # 選填:Resend 寄件人地址(已驗證網域)。留空時退回 Resend 測試寄件人(僅能寄給帳號擁有者)。
 EMAIL_FROM=""
+# AI Gateway → Claude:Anthropic API key(secret)。所有 LLM 呼叫經 AI Gateway。
+ANTHROPIC_API_KEY=""
+# AI Gateway 位置(非機密,可放 wrangler.toml [vars];本地放這裡也行)。
+# gateway endpoint = https://gateway.ai.cloudflare.com/v1/<account>/<name>/anthropic
+AI_GATEWAY_ACCOUNT_ID=""
+AI_GATEWAY_NAME=""
+# 選填:直接指定 gateway base url(覆蓋上面兩者;不含 /v1/messages 尾段)。
+AI_GATEWAY_BASE_URL=""

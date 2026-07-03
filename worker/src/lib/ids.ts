@@ -7,6 +7,9 @@ export const newCollectionId = () => shortId("col");
 export const newRecordId = () => shortId("rec");
 export const newSchemaOpId = () => shortId("op");
 export const newFieldId = () => shortId("fld", 12);
+export const newChatSessionId = () => shortId("chat");
+export const newChatMessageId = () => shortId("msg");
+export const newActionId = () => shortId("act", 12);
 
 /**
  * slug 保留字:這些 path 前綴由系統路由佔用(見 PLAN.md),collection slug 不可撞上,

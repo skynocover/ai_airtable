@@ -10,18 +10,10 @@ import {
 import type { CollectionRow, Field } from "@ai-airtable/shared";
 import type { AppBindings } from "../types";
 import type { SelectOptions } from "../lib/db";
-import { isUniqueViolation } from "../lib/db";
-import { loadCollectionRow, parseSchema, toCollection } from "../lib/collections";
+import { createCollection, loadCollectionRow, parseSchema, toCollection } from "../lib/collections";
 import { safeParseObject, toRecordItem, type RecordRow } from "../lib/records";
-import { applyOperations, buildInitialSchema, SchemaOpError } from "../lib/schema-ops";
-import {
-  RESERVED_SLUGS,
-  newCollectionId,
-  newRecordId,
-  newSchemaOpId,
-  randomSuffix,
-  slugifyBase,
-} from "../lib/ids";
+import { applyOperations, SchemaOpError } from "../lib/schema-ops";
+import { newRecordId, newSchemaOpId } from "../lib/ids";
 
 export const collectionRoutes = new Hono<AppBindings>();
 
@@ -50,44 +42,17 @@ collectionRoutes.post("/", async (c) => {
     return c.json(validationError(parsed.error.issues[0]?.message ?? "輸入無效"), 400);
   }
 
-  let schema;
+  const db = c.get("db");
   try {
-    schema = buildInitialSchema(parsed.data.fields);
+    const col = await createCollection(db, parsed.data);
+    return c.json(col, 201);
   } catch (e) {
     if (e instanceof SchemaOpError) return c.json(validationError(e.message), 400);
+    if (e instanceof Error && e.message.includes("唯一的 slug")) {
+      return c.json(validationError("無法產生唯一的 slug,請換個名稱"), 400);
+    }
     throw e;
   }
-
-  const db = c.get("db");
-  const now = Date.now();
-  const base = slugifyBase(parsed.data.name);
-  const schemaJson = JSON.stringify(schema);
-
-  // slug 唯一性交給 DB 約束兜底(UNIQUE(workspace_id, slug)):撞號或撞保留字 → 換尾碼重試。
-  for (let attempt = 0; attempt < 8; attempt++) {
-    const slug = attempt === 0 && !RESERVED_SLUGS.has(base) ? base : `${base}-${randomSuffix()}`;
-    const id = newCollectionId();
-    try {
-      await db.insert("collections", {
-        id,
-        name: parsed.data.name,
-        slug,
-        icon: parsed.data.icon ?? null,
-        description: parsed.data.description ?? null,
-        schema_version: 1,
-        current_schema_json: schemaJson,
-        deleted_at: null,
-        created_at: now,
-        updated_at: now,
-      });
-      const row = await loadCollectionRow(db, id);
-      return c.json(toCollection(row!), 201);
-    } catch (e) {
-      if (isUniqueViolation(e, "slug")) continue; // 撞 slug → 重試
-      throw e;
-    }
-  }
-  return c.json(validationError("無法產生唯一的 slug,請換個名稱"), 400);
 });
 
 /** GET /api/v1/collections — 當前 workspace 未刪除 collection 列表。 */

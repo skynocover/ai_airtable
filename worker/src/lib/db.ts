@@ -25,6 +25,7 @@ export const WORKSPACE_SCOPED_TABLES = [
   "form_submissions",
   "screenshot_jobs",
   "chat_sessions",
+  "chat_messages",
 ] as const;
 
 export type WorkspaceScopedTable = (typeof WORKSPACE_SCOPED_TABLES)[number];
@@ -145,9 +146,11 @@ export function isUniqueViolation(e: unknown, column?: string): boolean {
   if (!/UNIQUE constraint failed/i.test(msg)) return false;
   if (!column) return true;
   // D1/SQLite 訊息形如 `UNIQUE constraint failed: workspaces.owner_id[, workspaces.slug...]`。
-  // 比對 `.<column>` 並要求其後為邊界(逗號/空白/字串結尾),避免把 `owner_id` 誤判成 `id`
-  // 之類的子字串相符。column 來源為程式內字面值,不含 regex 特殊字元。
-  return new RegExp(`\\.${column}(?=$|[\\s,])`).test(msg);
+  // 真實 D1(workerd)在最後一欄後接 `: SQLITE_CONSTRAINT ...`,故邊界須含冒號:
+  //   `... collections.workspace_id, collections.slug: SQLITE_CONSTRAINT_UNIQUE)`
+  // 邊界字元集:字串結尾 / 空白 / 逗號 / 冒號 / 右括號。要求邊界是為了避免把 `owner_id`
+  // 誤判成 `id` 之類的子字串相符。column 來源為程式內字面值,不含 regex 特殊字元。
+  return new RegExp(`\\.${column}(?=$|[\\s,:)])`).test(msg);
 }
 
 export function scopedDb(db: D1Database, workspaceId: string): ScopedDb {
@@ -253,6 +256,8 @@ export interface GlobalDb {
   getWorkspaceById(id: string): Promise<Workspace | null>;
   createWorkspace(row: Workspace): Promise<void>;
   updateWorkspaceName(id: string, name: string, updatedAt: number): Promise<void>;
+  /** 累加 AI token 用量(供 #6 配額使用;本 change 只記錄、不限制)。 */
+  addAiTokensUsed(workspaceId: string, tokens: number): Promise<void>;
 }
 
 export function globalDb(db: D1Database): GlobalDb {
@@ -304,6 +309,15 @@ export function globalDb(db: D1Database): GlobalDb {
       await db
         .prepare(`UPDATE workspaces SET name = ?, updated_at = ? WHERE id = ?`)
         .bind(name, updatedAt, id)
+        .run();
+    },
+
+    async addAiTokensUsed(workspaceId: string, tokens: number) {
+      await db
+        .prepare(
+          `UPDATE workspaces SET ai_tokens_used_this_month = ai_tokens_used_this_month + ? WHERE id = ?`,
+        )
+        .bind(tokens, workspaceId)
         .run();
     },
   };

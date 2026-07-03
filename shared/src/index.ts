@@ -3,5 +3,6 @@ export * from "./workspace";
 export * from "./api";
 export * from "./fields";
 export * from "./records";
+export * from "./chat";
 export { STRINGS } from "./strings";
 export type { Strings } from "./strings";

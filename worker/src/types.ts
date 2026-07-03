@@ -15,6 +15,14 @@ export interface Env {
   RESEND_API_KEY?: string;
   /** 寄件地址(Resend 已驗證網域)。未設定時退回 Resend 測試寄件人。 */
   EMAIL_FROM?: string;
+  // ── AI Gateway(Claude via Cloudflare AI Gateway)──
+  /** Anthropic API key(Worker secret;絕不進 repo/回應)。 */
+  ANTHROPIC_API_KEY: string;
+  /** AI Gateway 的 Cloudflare account id + gateway 名稱(vars);用來組 gateway endpoint。 */
+  AI_GATEWAY_ACCOUNT_ID?: string;
+  AI_GATEWAY_NAME?: string;
+  /** 選填:直接指定 gateway base url(覆蓋上面兩者;測試/自訂用,不含 /v1/messages 尾段）。 */
+  AI_GATEWAY_BASE_URL?: string;
 }
 
 /**
